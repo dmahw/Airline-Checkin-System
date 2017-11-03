@@ -18,15 +18,15 @@ struct cus *queue1 = NULL;
 struct cus *queue2 = NULL;
 struct cus *queue3 = NULL;
 int q_size[NUM_QUEUES];
-pthread_mutex_t queues_mutex = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t clerks_mutex = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t total_wait_time_mutex = PTHREAD_MUTEX_INITIALIZER;
-pthread_cond_t q0_cond = PTHREAD_COND_INITIALIZER;
-pthread_cond_t q1_cond = PTHREAD_COND_INITIALIZER; 
-pthread_cond_t q2_cond = PTHREAD_COND_INITIALIZER; 
-pthread_cond_t q3_cond = PTHREAD_COND_INITIALIZER;
-pthread_cond_t c0_cond = PTHREAD_COND_INITIALIZER;
-pthread_cond_t c1_cond = PTHREAD_COND_INITIALIZER;
+pthread_mutex_t queues_mutex;
+pthread_mutex_t clerks_mutex;
+pthread_mutex_t total_wait_time_mutex;
+pthread_cond_t q0_cond;
+pthread_cond_t q1_cond; 
+pthread_cond_t q2_cond; 
+pthread_cond_t q3_cond;
+pthread_cond_t c0_cond;
+pthread_cond_t c1_cond;
 
 struct cus {
     int cus_id;
@@ -274,6 +274,7 @@ void *clerk_thread(void *id) {
             pthread_mutex_unlock(&queues_mutex);
             printf("CLERK %d: Unlocked queues\n", clerk_id);
             fflush(stdout);
+            if(num_cus <= 0) pthread_exit(NULL);
             usleep(100000);
             pthread_mutex_lock(&queues_mutex);
             printf("CLERK %d: Locked queues for choosing\n", clerk_id);
@@ -392,10 +393,31 @@ int main(int argc, char *argv[]) {
             customers = addCus(customers, cus_id, sleep_time, serv_time, 0);
         }
 
+        int init_mutex_error = 0;
+        int init_cond_error = 0;
+        if (pthread_mutex_init(&queues_mutex, NULL) != 0) init_mutex_error = 1;
+        if (pthread_mutex_init(&clerks_mutex, NULL) != 0) init_mutex_error = 1;
+        if (pthread_mutex_init(&total_wait_time_mutex, NULL) != 0) init_mutex_error = 1;
+        if (pthread_cond_init(&q0_cond, NULL) != 0) init_cond_error = 1;
+        if (pthread_cond_init(&q1_cond, NULL) != 0) init_cond_error = 1;
+        if (pthread_cond_init(&q2_cond, NULL) != 0) init_cond_error = 1;
+        if (pthread_cond_init(&q3_cond, NULL) != 0) init_cond_error = 1;
+        if (pthread_cond_init(&c0_cond, NULL) != 0) init_cond_error = 1;
+        if (pthread_cond_init(&c1_cond, NULL) != 0) init_cond_error = 1;
+        if (init_mutex_error == 1) {
+            printf("ERROR: Unable to initialize mutexes\n");
+            exit(1);
+        }
+        if (init_cond_error == 1) {
+            printf("ERROR: Unable to initialize convars\n");
+            exit(1);
+        }
+
         num_cus = terminal_size;
         struct cus *cus_info = customers;
         pthread_t cus_threads[terminal_size];
         pthread_t clerk_threads[NUM_CLERKS];
+
         int i;
         for (i = 0; i < NUM_QUEUES; i++) q_size[i] = 0;
         
@@ -418,11 +440,34 @@ int main(int argc, char *argv[]) {
                 exit(1);
             }
         }
-    }
-    while (1) {
-        usleep(100000);
-        if(num_cus <= 0) {
+
+        while (1) {
+            usleep(100000);
+            int i;
+            for(i = 0; i < terminal_size; i++) pthread_join(cus_threads[i], NULL);
+            for(i = 0; i < NUM_CLERKS; i++) pthread_join(clerk_threads[i], NULL);
+    
             printf("Total Waiting Time %f\n\n\n\nEND OF PROGRAM\n\n\n\n\n", (double)total_wait_time/(double)terminal_size);
+    
+            int dest_mutex_error = 0;
+            int dest_cond_error = 0;
+            if (pthread_mutex_destroy(&queues_mutex) != 0) dest_mutex_error = 1;
+            if (pthread_mutex_destroy(&clerks_mutex) != 0) dest_mutex_error = 1;
+            if (pthread_mutex_destroy(&total_wait_time_mutex) != 0) dest_mutex_error = 1;
+            if (pthread_cond_destroy(&q0_cond) != 0) dest_cond_error = 1;
+            if (pthread_cond_destroy(&q1_cond) != 0) dest_cond_error = 1;
+            if (pthread_cond_destroy(&q2_cond) != 0) dest_cond_error = 1;
+            if (pthread_cond_destroy(&q3_cond) != 0) dest_cond_error = 1;
+            if (pthread_cond_destroy(&c0_cond) != 0) dest_cond_error = 1;
+            if (pthread_cond_destroy(&c1_cond) != 0) dest_cond_error = 1;
+            if (dest_mutex_error == 1) {
+                printf("ERROR: Unable to destroy mutexes\n");
+                exit(1);
+            }
+            if (dest_cond_error == 1) {
+                printf("ERROR: Unable to destroy convars\n");
+                exit(1);
+            }
             exit(0);
         }
     }
