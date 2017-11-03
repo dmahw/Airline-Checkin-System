@@ -5,19 +5,19 @@
 #include <string.h>
 #include <time.h>
 
-#define num_clerks 2
-#define num_queues 4
+#define NUM_CLERKS 2
+#define NUM_QUEUES 4
 
+int terminal_size;
 int num_cus;
 double total_wait_time = 0;
 struct cus *customers = NULL;
-int clerks[num_clerks];
+int clerks[NUM_CLERKS];
 struct cus *queue0 = NULL;
 struct cus *queue1 = NULL;
 struct cus *queue2 = NULL;
 struct cus *queue3 = NULL;
-struct cus *queue[num_queues];
-int q_size[num_queues];
+int q_size[NUM_QUEUES];
 pthread_mutex_t queues_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t clerks_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t total_wait_time_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -113,7 +113,7 @@ int pickQueue(int shortest) {
 
 int clerkAvail(int q_num) {
     int i;
-    for (i = 0; i < num_clerks; i++) {
+    for (i = 0; i < NUM_CLERKS; i++) {
         if (clerks[i] == q_num) {
             clerks[i] = -1;
             return i;
@@ -274,7 +274,7 @@ void *clerk_thread(void *id) {
             pthread_mutex_unlock(&queues_mutex);
             printf("CLERK %d: Unlocked queues\n", clerk_id);
             fflush(stdout);
-            usleep(1000000);
+            usleep(1000);
             pthread_mutex_lock(&queues_mutex);
             printf("CLERK %d: Locked queues for choosing\n", clerk_id);
             fflush(stdout);
@@ -356,7 +356,7 @@ int main(int argc, char *argv[]) {
         int line_count = 0;
         while((getline(&line, &len, file)) != -1) {
             if (line_count == 0) {
-                num_cus = strtol(line, NULL, 10);
+                terminal_size = strtol(line, NULL, 10);
                 ++line_count;
                 continue;
             }
@@ -376,26 +376,30 @@ int main(int argc, char *argv[]) {
             }
             if (cus_id < 0) {
                 printf("WARNING: Invalid customer ID");
-                exit(1);
+                terminal_size--;
+                continue;
             }
             if (sleep_time < 0) {
                 printf("WARNING: Invalid sleep time\n");
-                exit(1);
+                terminal_size--;
+                continue;
             }
             if (serv_time < 0) {
                 printf("WARNING: Invalid service time\n");
-                exit(1);
+                terminal_size--;
+                continue;
             }
             customers = addCus(customers, cus_id, sleep_time, serv_time, 0);
         }
 
+        num_cus = terminal_size;
         struct cus *cus_info = customers;
-        pthread_t cus_threads[num_cus];
-        pthread_t clerk_threads[num_clerks];
+        pthread_t cus_threads[terminal_size];
+        pthread_t clerk_threads[NUM_CLERKS];
         int i;
-        for (i = 0; i < num_queues; i++) q_size[i] = 0;
-
-        for (i = 0; i < num_cus; i++) {
+        for (i = 0; i < NUM_QUEUES; i++) q_size[i] = 0;
+        
+        for (i = 0; i < terminal_size; i++) {
             printf("CREATION: Creating Customer %d\n", cus_info->cus_id);            
             if (pthread_create(&cus_threads[i], NULL, cus_thread, cus_info) != 0) {
                 printf("ERROR: Unable to create customer thread\n");
@@ -404,7 +408,7 @@ int main(int argc, char *argv[]) {
             cus_info = cus_info->next;
         }
 
-        for(i = 0; i < num_clerks; i++) {
+        for(i = 0; i < NUM_CLERKS; i++) {
             clerks[i] = -1;
             int *clerk_id = malloc(sizeof(*clerk_id));
             *clerk_id = i;
@@ -416,9 +420,9 @@ int main(int argc, char *argv[]) {
         }
     }
     while (1) {
-        usleep(1000000);
+        usleep(1000);
         if(num_cus <= 0) {
-            printf("Total Waiting Time %f\n", (double)total_wait_time/(double)num_cus);
+            printf("Total Waiting Time %f\n\n\n\nEND OF PROGRAM\n\n\n\n\n", (double)total_wait_time/(double)terminal_size);
             exit(0);
         }
     }
