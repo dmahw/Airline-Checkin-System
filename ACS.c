@@ -274,7 +274,7 @@ void *clerk_thread(void *id) {
             pthread_mutex_unlock(&queues_mutex);
             printf("CLERK %d: Unlocked queues\n", clerk_id);
             fflush(stdout);
-            usleep(1000);
+            usleep(100000);
             pthread_mutex_lock(&queues_mutex);
             printf("CLERK %d: Locked queues for choosing\n", clerk_id);
             fflush(stdout);
@@ -420,7 +420,7 @@ int main(int argc, char *argv[]) {
         }
     }
     while (1) {
-        usleep(1000);
+        usleep(100000);
         if(num_cus <= 0) {
             printf("Total Waiting Time %f\n\n\n\nEND OF PROGRAM\n\n\n\n\n", (double)total_wait_time/(double)terminal_size);
             exit(0);
