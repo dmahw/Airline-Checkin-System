@@ -131,6 +131,11 @@ void printAll() {
     printf("LOG: Queue 3\n");
     printList(queue3);
     fflush(stdout);
+    printf("LOG: Queue 0 size: %d\n", q_size[0]);
+    printf("LOG: Queue 1 size: %d\n", q_size[1]);
+    printf("LOG: Queue 2 size: %d\n", q_size[2]);
+    printf("LOG: Queue 3 size: %d\n", q_size[3]);
+    fflush(stdout);
 }
 
 void *cus_thread(void *cus) {
@@ -276,24 +281,28 @@ void *clerk_thread(void *id) {
         if (longest == 0)  {
             cus_id = queue0->cus_id;
             q_size[0]--;
+            printAll();
             pthread_mutex_unlock(&queues_mutex);
             pthread_cond_broadcast(&q0_cond);
         }
         else if (longest == 1) {
             cus_id = queue1->cus_id; 
-            q_size[1]--;    
+            q_size[1]--;
+            printAll();    
             pthread_mutex_unlock(&queues_mutex);
             pthread_cond_broadcast(&q1_cond);
         }
         else if (longest == 2) {
             cus_id = queue2->cus_id;  
-            q_size[2]--;      
+            q_size[2]--;
+            printAll();      
             pthread_mutex_unlock(&queues_mutex);
             pthread_cond_broadcast(&q2_cond);
         }
         else if (longest == 3) {
             cus_id = queue3->cus_id;
-            q_size[3]--;        
+            q_size[3]--;
+            printAll();        
             pthread_mutex_unlock(&queues_mutex);
             pthread_cond_broadcast(&q3_cond);
         }
@@ -395,7 +404,7 @@ int main(int argc, char *argv[]) {
     while (1) {
         usleep(1000000);
         if(num_cus <= 0) {
-            printf("Total Waiting Time %f\n", total_wait_time);
+            printf("Total Waiting Time %d\n", (int)total_wait_time/(int)num_cus);
             exit(0);
         }
     }
