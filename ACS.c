@@ -13,10 +13,7 @@ int num_cus;
 double total_wait_time = 0;
 struct cus *customers = NULL;
 int clerks[NUM_CLERKS];
-struct cus *queue0 = NULL;
-struct cus *queue1 = NULL;
-struct cus *queue2 = NULL;
-struct cus *queue3 = NULL;
+struct cus *queue[NUM_QUEUES];
 int q_size[NUM_QUEUES];
 pthread_mutex_t queues_mutex;
 pthread_mutex_t clerks_mutex;
@@ -123,19 +120,15 @@ int clerkAvail(int q_num) {
 }
 
 void printAll() {
-    printf("LOG: Queue 0\n");
-    printList(queue0);
-    printf("LOG: Queue 1\n");
-    printList(queue1);
-    printf("LOG: Queue 2\n");
-    printList(queue2);
-    printf("LOG: Queue 3\n");
-    printList(queue3);
+    int i = 0;
+    for (i = 0; i < NUM_QUEUES; i++) {
+        printf("LOG: Queue %d\n", i);
+        printList(queue[i]);
+    }
     fflush(stdout);
-    printf("LOG: Queue 0 size: %d\n", q_size[0]);
-    printf("LOG: Queue 1 size: %d\n", q_size[1]);
-    printf("LOG: Queue 2 size: %d\n", q_size[2]);
-    printf("LOG: Queue 3 size: %d\n", q_size[3]);
+    for (i = 0; i < NUM_QUEUES; i++) {
+        printf("LOG: Queue %d size: %d\n", i, q_size[i]);
+    }
     fflush(stdout);
 }
 
@@ -147,91 +140,26 @@ void *cus_thread(void *cus) {
 
     pthread_mutex_lock(&queues_mutex);
     int shortest = pickQueue(1);
-    if (shortest == 0)  {
-        queue0 = addCus(queue0, cus_info->cus_id, cus_info->sleep_time, cus_info->serv_time, time(NULL));
-        q_size[0]++;
-        printAll();
-        printf("ARRIVAL: Added customer %d to queue 0\n", cus_info->cus_id);
-        while(1) {
-            pthread_cond_wait(&q0_cond, &queues_mutex);
-            if (cus_info->cus_id == queue0->cus_id) {
-                pthread_mutex_lock(&clerks_mutex);
-                serving_clerk = clerkAvail(0);
-                pthread_mutex_unlock(&clerks_mutex);
-                if (serving_clerk != -1) {
-                    pthread_mutex_lock(&total_wait_time_mutex);
-                    total_wait_time += time(NULL) - queue0->begin_wait_time;
-                    pthread_mutex_unlock(&total_wait_time_mutex);
-                    queue0 = removeCus(queue0);
-                    printAll();
-                    break;
-                }
-            }
-        }
-    }
-    else if (shortest == 1) {
-        queue1 = addCus(queue1, cus_info->cus_id, cus_info->sleep_time, cus_info->serv_time, time(NULL));
-        q_size[1]++;
-        printf("ARRIVAL: Added customer %d to queue 1\n", cus_info->cus_id);
-        printAll();
-        while(1) {
-            pthread_cond_wait(&q1_cond, &queues_mutex);
-            if (cus_info->cus_id == queue1->cus_id) {
-                pthread_mutex_lock(&clerks_mutex);
-                serving_clerk = clerkAvail(1);
-                pthread_mutex_unlock(&clerks_mutex);
-                if (serving_clerk != -1) {
-                    pthread_mutex_lock(&total_wait_time_mutex);
-                    total_wait_time += time(NULL) - queue1->begin_wait_time;
-                    pthread_mutex_unlock(&total_wait_time_mutex);
-                    queue1 = removeCus(queue1);
-                    printAll();
-                    break;
-                }
-            }
-        } 
-    }
-    else if (shortest == 2) {
-        queue2 = addCus(queue2, cus_info->cus_id, cus_info->sleep_time, cus_info->serv_time, time(NULL));
-        q_size[2]++;
-        printf("ARRIVAL: Added customer %d to queue 2\n", cus_info->cus_id);
-        printAll();
-        while(1) {
-            pthread_cond_wait(&q2_cond, &queues_mutex);
-            if (cus_info->cus_id == queue2->cus_id) {
-                pthread_mutex_lock(&clerks_mutex);
-                serving_clerk = clerkAvail(2);
-                pthread_mutex_unlock(&clerks_mutex);
-                if (serving_clerk != -1) {
-                    pthread_mutex_lock(&total_wait_time_mutex);
-                    total_wait_time += time(NULL) - queue2->begin_wait_time;
-                    pthread_mutex_unlock(&total_wait_time_mutex);
-                    queue2 = removeCus(queue2);
-                    printAll();
-                    break;
-                }
-            }
-        }         
-    }
-    else if (shortest == 3) {
-        queue3 = addCus(queue3, cus_info->cus_id, cus_info->sleep_time, cus_info->serv_time, time(NULL));
-        q_size[3]++;
-        printf("ARRIVAL: Added customer %d to queue 3\n", cus_info->cus_id);
-        printAll();
-        while(1) {
-            pthread_cond_wait(&q3_cond, &queues_mutex);
-            if (cus_info->cus_id == queue3->cus_id) {
-                pthread_mutex_lock(&clerks_mutex);
-                serving_clerk = clerkAvail(3);
-                pthread_mutex_unlock(&clerks_mutex);
-                if (serving_clerk != -1) {     
-                    pthread_mutex_lock(&total_wait_time_mutex);
-                    total_wait_time += time(NULL) - queue3->begin_wait_time;
-                    pthread_mutex_unlock(&total_wait_time_mutex);        
-                    queue3 = removeCus(queue3);
-                    printAll();
-                    break;
-                }
+    queue[shortest] = addCus(queue[shortest], cus_info->cus_id, cus_info->sleep_time, cus_info->serv_time, time(NULL));
+    q_size[shortest]++;
+    printAll();
+    printf("ARRIVAL: Added customer %d to queue %d\n", cus_info->cus_id, shortest);
+    while(1) {
+        if (shortest == 0) pthread_cond_wait(&q0_cond, &queues_mutex);
+        if (shortest == 1) pthread_cond_wait(&q1_cond, &queues_mutex);
+        if (shortest == 2) pthread_cond_wait(&q2_cond, &queues_mutex);
+        if (shortest == 3) pthread_cond_wait(&q3_cond, &queues_mutex);
+        if (cus_info->cus_id == queue[shortest]->cus_id) {
+            pthread_mutex_lock(&clerks_mutex);
+            serving_clerk = clerkAvail(shortest);
+            pthread_mutex_unlock(&clerks_mutex);
+            if (serving_clerk != -1) {
+                pthread_mutex_lock(&total_wait_time_mutex);
+                total_wait_time += time(NULL) - queue[shortest]->begin_wait_time;
+                pthread_mutex_unlock(&total_wait_time_mutex);
+                queue[shortest] = removeCus(queue[shortest]);
+                printAll();
+                break;
             }
         }
     }
@@ -285,42 +213,16 @@ void *clerk_thread(void *id) {
         clerks[clerk_id] = longest;
         pthread_mutex_unlock(&clerks_mutex);
 
-        if (longest == 0)  {
-            cus_id = queue0->cus_id;
-            q_size[0]--;
-            printAll();
-            pthread_mutex_unlock(&queues_mutex);
-            printf("CLERK %d: Unlocked queues\n", clerk_id);
-            fflush(stdout);
-            pthread_cond_broadcast(&q0_cond);
-        }
-        else if (longest == 1) {
-            cus_id = queue1->cus_id; 
-            q_size[1]--;
-            printAll();    
-            pthread_mutex_unlock(&queues_mutex);
-            printf("CLERK %d: Unlocked queues\n", clerk_id);
-            fflush(stdout);
-            pthread_cond_broadcast(&q1_cond);
-        }
-        else if (longest == 2) {
-            cus_id = queue2->cus_id;  
-            q_size[2]--;
-            printAll();      
-            pthread_mutex_unlock(&queues_mutex);
-            printf("CLERK %d: Unlocked queues\n", clerk_id);
-            fflush(stdout);
-            pthread_cond_broadcast(&q2_cond);
-        }
-        else if (longest == 3) {
-            cus_id = queue3->cus_id;
-            q_size[3]--;
-            printAll();        
-            pthread_mutex_unlock(&queues_mutex);
-            printf("CLERK %d: Unlocked queues\n", clerk_id);
-            fflush(stdout);
-            pthread_cond_broadcast(&q3_cond);
-        }
+        cus_id = queue[longest]->cus_id;
+        q_size[longest]--;
+        printAll();
+        pthread_mutex_unlock(&queues_mutex);
+        printf("CLERK %d: Unlocked queues\n", clerk_id);
+        fflush(stdout);
+        if (longest == 0) pthread_cond_broadcast(&q0_cond);
+        if (longest == 1) pthread_cond_broadcast(&q1_cond);
+        if (longest == 2) pthread_cond_broadcast(&q2_cond);
+        if (longest == 3) pthread_cond_broadcast(&q3_cond);
 
         printf("CLERK %d: Serving customer %d from queue %d\n", clerk_id, cus_id, longest);
         fflush(stdout);
