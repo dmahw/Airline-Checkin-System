@@ -16,6 +16,7 @@ struct cus *queue0 = NULL;
 struct cus *queue1 = NULL;
 struct cus *queue2 = NULL;
 struct cus *queue3 = NULL;
+struct cus *queue[num_queues];
 int q_size[num_queues];
 pthread_mutex_t queues_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t clerks_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -265,24 +266,31 @@ void *clerk_thread(void *id) {
         int longest = -1;
 
         pthread_mutex_lock(&queues_mutex);
-
+        printf("CLERK %d: Locked queues for choosing\n", clerk_id);
+        fflush(stdout);
         while(longest == -1) {
             longest = pickQueue(0);
+            if(longest != -1) break;
             pthread_mutex_unlock(&queues_mutex);
+            printf("CLERK %d: Unlocked queues\n", clerk_id);
+            fflush(stdout);
             usleep(1000000);
             pthread_mutex_lock(&queues_mutex);
+            printf("CLERK %d: Locked queues for choosing\n", clerk_id);
+            fflush(stdout);
         }
-        
+
         pthread_mutex_lock(&clerks_mutex);  
         clerks[clerk_id] = longest;
         pthread_mutex_unlock(&clerks_mutex);
-
 
         if (longest == 0)  {
             cus_id = queue0->cus_id;
             q_size[0]--;
             printAll();
             pthread_mutex_unlock(&queues_mutex);
+            printf("CLERK %d: Unlocked queues\n", clerk_id);
+            fflush(stdout);
             pthread_cond_broadcast(&q0_cond);
         }
         else if (longest == 1) {
@@ -290,6 +298,8 @@ void *clerk_thread(void *id) {
             q_size[1]--;
             printAll();    
             pthread_mutex_unlock(&queues_mutex);
+            printf("CLERK %d: Unlocked queues\n", clerk_id);
+            fflush(stdout);
             pthread_cond_broadcast(&q1_cond);
         }
         else if (longest == 2) {
@@ -297,6 +307,8 @@ void *clerk_thread(void *id) {
             q_size[2]--;
             printAll();      
             pthread_mutex_unlock(&queues_mutex);
+            printf("CLERK %d: Unlocked queues\n", clerk_id);
+            fflush(stdout);
             pthread_cond_broadcast(&q2_cond);
         }
         else if (longest == 3) {
@@ -304,6 +316,8 @@ void *clerk_thread(void *id) {
             q_size[3]--;
             printAll();        
             pthread_mutex_unlock(&queues_mutex);
+            printf("CLERK %d: Unlocked queues\n", clerk_id);
+            fflush(stdout);
             pthread_cond_broadcast(&q3_cond);
         }
 
@@ -404,7 +418,7 @@ int main(int argc, char *argv[]) {
     while (1) {
         usleep(1000000);
         if(num_cus <= 0) {
-            printf("Total Waiting Time %d\n", (int)total_wait_time/(int)num_cus);
+            printf("Total Waiting Time %f\n", (double)total_wait_time/(double)num_cus);
             exit(0);
         }
     }
