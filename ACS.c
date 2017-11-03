@@ -375,7 +375,7 @@ int main(int argc, char *argv[]) {
                 token = strtok(NULL, ":,");
             }
             if (cus_id < 0) {
-                printf("WARNING: Invalid customer ID");
+                printf("WARNING: Invalid customer ID\n");
                 terminal_size--;
                 continue;
             }
