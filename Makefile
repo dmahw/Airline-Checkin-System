@@ -1,5 +1,9 @@
-all: ACS
+.phony default:
+default: ACS
 
-ASC: ACS.c
-	gcc -pthread -o ACS ACS.c 
+ACS: ACS.c
+	gcc -pthread ACS.c -o ACS
 
+.PHONY clean:
+clean:
+	-rm -rf *.o *.exe

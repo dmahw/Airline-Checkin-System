@@ -250,7 +250,6 @@ void *clerk_thread(void *id) {
 int main(int argc, char *argv[]) {
     srand(time(NULL));                      //random number
     char *line = NULL;                      //line storage
-    char *line_tok;                         //token storage
     size_t len = 0;
 
     if (argc != 2) {                        //number of arguments required to run
