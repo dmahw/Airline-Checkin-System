@@ -52,6 +52,11 @@ int size(struct cus *list) {
     return size;
 }
 
+/*********************
+    Linked List Guidence from
+        https://www.tutorialspoint.com/data_structures_algorithms/linked_list_program_in_c.htm
+*********************/
+
 //add customer to queue or database
 struct cus *addCus(struct cus *list, int cus_id, double sleep_time, double serv_time, time_t begin_wait_time) {
     struct cus *ptr = (struct cus*) malloc(sizeof(struct cus));
@@ -71,11 +76,14 @@ struct cus *addCus(struct cus *list, int cus_id, double sleep_time, double serv_
 
 //remove customer from the front of the queue
 struct cus *removeCus(struct cus *list) {
-    printf("REMOVAL: Customer %d removed from queue\n", list->cus_id);    
     if(list == NULL) return NULL;
     list = list->next; 
     return list;
 }
+
+/********************************
+    END OF LINKED LIST GUIDENCE
+********************************/
 
 //pick the shortest or longest queue
 int pickQueue(int shortest) {
@@ -84,7 +92,6 @@ int pickQueue(int shortest) {
     //If no one in a queue, return -1 as longest pick
     if(shortest == 0) {
         if((q_size[0] == 0) && (q_size[1] == 0) && (q_size[2] == 0) && (q_size[3] == 0)){
-            printf("QUEUE: No One Waiting\n");
             return -1;
         }
     }
@@ -148,15 +155,13 @@ void *cus_thread(void *cus) {
     usleep(cus_info->sleep_time * 1000000);                     //sleep for arrival time
     printf("A customer arrives: customer ID %2d.\n", cus_info->cus_id);
     fflush(stdout);
-    printf("ARRIVAL: Customer %d has arrived after %f\n", cus_info->cus_id, cus_info->sleep_time);
 
     pthread_mutex_lock(&queues_mutex);                          //lock the queues for editing
     int shortest = pickQueue(1);                                //determine which is shortest queue
     queue[shortest] = addCus(queue[shortest], cus_info->cus_id, cus_info->sleep_time, cus_info->serv_time, time(NULL));
     q_size[shortest]++;                                         //increment queue size
-    printAll();
     printf("A customer enters a queue: the queue ID %1d, and the length of the queue%2d.\n", shortest, q_size[shortest]);
-    printf("ARRIVAL: Added customer %d to queue %d\n", cus_info->cus_id, shortest);
+    fflush(stdout);
 
     //while in the queue
     while(1) {                                   
@@ -173,7 +178,6 @@ void *cus_thread(void *cus) {
                 total_wait_time += time(NULL) - queue[shortest]->begin_wait_time;   //append wait to total wait time
                 pthread_mutex_unlock(&total_wait_time_mutex);                       //unlock total wait time
                 queue[shortest] = removeCus(queue[shortest]);                       //remove self from queue
-                printAll();
                 break;                                                              //exit queue
             }
         }
@@ -181,19 +185,11 @@ void *cus_thread(void *cus) {
 
     pthread_mutex_unlock(&queues_mutex);                //unlock queues
     pthread_mutex_unlock(&clerks_mutex);                //unlock clerks
-    
-    printf("CUSTOMER %d: Being served by clerk %d\n", cus_info->cus_id, serving_clerk);
-    fflush(stdout);
 
     usleep(cus_info->serv_time * 1000000);              //sleep for service time
 
-    printf("CUSTOMER %d: Leaving clerk %d\n", cus_info->cus_id, serving_clerk);
-    fflush(stdout);
-
     pthread_mutex_lock(&queues_mutex);                  //lock queues
     num_cus--;                                          //leave the terminal checkin
-    printf("WORLD: Number of customers in the terminal %d\n", num_cus);
-    fflush(stdout);
     pthread_mutex_unlock(&queues_mutex);                //unlock queues
 
     if(serving_clerk == 0) pthread_cond_signal(&c0_cond);           //signal serving clerk that you have finished
@@ -210,19 +206,13 @@ void *clerk_thread(void *id) {
         int longest = -1;
 
         pthread_mutex_lock(&queues_mutex);              //lock queues
-        printf("CLERK %d: Locked queues for choosing\n", clerk_id);
-        fflush(stdout);
         while(longest == -1) {                          //determine longest queue, if no one check later
             longest = pickQueue(0);                     //pick longest queue
             if(longest != -1) break;                    //if no queues are empty, continue with serving
             pthread_mutex_unlock(&queues_mutex);        //unlock queues for others to join or check
-            printf("CLERK %d: Unlocked queues\n", clerk_id);
-            fflush(stdout);
             if(num_cus <= 0) pthread_exit(NULL);        //if all expected customers have arrived and left. job is done
             usleep(100000);                             //sleep to check queues later
             pthread_mutex_lock(&queues_mutex);          //lock queues for checking queues
-            printf("CLERK %d: Locked queues for choosing\n", clerk_id);
-            fflush(stdout);
         }
 
         pthread_mutex_lock(&clerks_mutex);              //lock clerks
@@ -231,17 +221,13 @@ void *clerk_thread(void *id) {
 
         cus_id = queue[longest]->cus_id;                //determine which customer to serve
         q_size[longest]--;                              //update queue size
-        printAll();     
         pthread_mutex_unlock(&queues_mutex);            //unlock queues
-        printf("CLERK %d: Unlocked queues\n", clerk_id);
-        fflush(stdout);
         if (longest == 0) pthread_cond_broadcast(&q0_cond);     //broadcast to all customer in specific longest queue
         if (longest == 1) pthread_cond_broadcast(&q1_cond);     //customers determine whether it is first in queue
         if (longest == 2) pthread_cond_broadcast(&q2_cond);     //
         if (longest == 3) pthread_cond_broadcast(&q3_cond);     //
 
         printf("A clerk starts serving a customer: start time %.2f, the customer ID %2d, the clerk ID %1d.\n", (double)time(NULL), cus_id, clerk_id);
-        printf("CLERK %d: Serving customer %d from queue %d\n", clerk_id, cus_id, longest);
         fflush(stdout);
         longest = -1;                                           //reset longest pick
 
@@ -250,9 +236,9 @@ void *clerk_thread(void *id) {
 
         clerks[clerk_id] = -1;                          //Set your serving clerk status to busy
 
-        printf("CLERK %d: Done serving customer %d\n", clerk_id, cus_id);
         printf("A clerk finishes serving a customer: end time %.2f, the customer ID %2d, the clerk ID %1d.\n", (double)time(NULL), cus_id, clerk_id);
-        
+        fflush(stdout);
+
         pthread_mutex_unlock(&clerks_mutex);            //unlock clerks
 
         if(num_cus <= 0) pthread_exit(NULL);            //exit once all expected customers have left
@@ -343,7 +329,6 @@ int main(int argc, char *argv[]) {
         for (i = 0; i < NUM_QUEUES; i++) q_size[i] = 0;     //for each queue, set size to 0
         
         for (i = 0; i < terminal_size; i++) {               //for each customer, create a thread
-            printf("CREATION: Creating Customer %d\n", cus_info->cus_id);   
             if (pthread_create(&cus_threads[i], NULL, cus_thread, cus_info) != 0) { //each thread will have own customer info
                 printf("ERROR: Unable to create customer thread\n");
                 exit(1);                                    //exit if customer thread fails to be created
@@ -355,7 +340,6 @@ int main(int argc, char *argv[]) {
             clerks[i] = -1;                                         //Set clerk busy to true
             int *clerk_id = malloc(sizeof(*clerk_id));              //storage for clerk id
             *clerk_id = i;                                          //clerk id
-            printf("CREATION: Creating Clerk %d\n", *clerk_id);
             if (pthread_create(&clerk_threads[i], NULL, clerk_thread, clerk_id) != 0) { //create a clerk thread
                 printf("ERROR: Unable to create clerk thread\n");
                 exit(1);                                            //exit if clerk thread fails to be created
@@ -367,26 +351,27 @@ int main(int argc, char *argv[]) {
             int i;                          //join with every customer and clerk thread once they finish
             for(i = 0; i < terminal_size; i++) pthread_join(cus_threads[i], NULL);
             for(i = 0; i < NUM_CLERKS; i++) pthread_join(clerk_threads[i], NULL);
-    
+            
+            
             printf("The average waiting time for all customers in the system is: %.2f\n", (double)total_wait_time/(double)terminal_size);
-    
-            int dest_mutex_error = 0;       //destroy all queues and convars
-            int dest_cond_error = 0;
-            if (pthread_mutex_destroy(&queues_mutex) != 0) dest_mutex_error = 1;
-            if (pthread_mutex_destroy(&clerks_mutex) != 0) dest_mutex_error = 1;
-            if (pthread_mutex_destroy(&total_wait_time_mutex) != 0) dest_mutex_error = 1;
+            
+            pthread_mutex_unlock(&queues_mutex);
+            pthread_mutex_unlock(&clerks_mutex);
+            pthread_mutex_unlock(&total_wait_time_mutex);
+
+            int dest_cond_error = 0;        //destroy all mutexes and convars
             if (pthread_cond_destroy(&q0_cond) != 0) dest_cond_error = 1;
             if (pthread_cond_destroy(&q1_cond) != 0) dest_cond_error = 1;
             if (pthread_cond_destroy(&q2_cond) != 0) dest_cond_error = 1;
             if (pthread_cond_destroy(&q3_cond) != 0) dest_cond_error = 1;
             if (pthread_cond_destroy(&c0_cond) != 0) dest_cond_error = 1;
             if (pthread_cond_destroy(&c1_cond) != 0) dest_cond_error = 1;
-            if (dest_mutex_error == 1) {    //Exit if failed to destroy mutexes
-                printf("ERROR: Unable to destroy mutexes\n");
-                exit(1);
-            }
             if (dest_cond_error == 1) {     //Exit if failed to destroy convars
                 printf("ERROR: Unable to destroy convars\n");
+                exit(1);
+            }
+            if (fclose(file) != 0) {
+                printf("ERROR: Unable to close file");
                 exit(1);
             }
             exit(0);                        //If all goes well, exit.
@@ -394,9 +379,3 @@ int main(int argc, char *argv[]) {
     }
     exit(0);
 }
-
-
-/*********************
-    Linked List Guidence from
-        https://www.tutorialspoint.com/data_structures_algorithms/linked_list_program_in_c.htm
-*********************/
