@@ -12,3 +12,7 @@ There are 3 provided test files in the package.
     customers.txt has an average wait time of ~6-7s
     cust2.txt has an average wait time of ~14s
     cust3.txt has an average wait time of ~6s
+
+Design
+There were a few small design changes as the previous design heavily relied on using convars as the "queues". 
+Please refer to the updated design document labeled as "Assignment 2 Deliverable 1 Updated.pdf"
