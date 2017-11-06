@@ -1,4 +1,3 @@
-.PHONY all:
 all: ACS
 
 ASC: ACS.c
