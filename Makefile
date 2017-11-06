@@ -1,5 +1,5 @@
 all: ACS
 
 ASC: ACS.c
-	gcc -pthread ACS.c -o ACS
+	gcc -pthread -o ACS ACS.c 
 
