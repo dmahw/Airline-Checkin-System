@@ -8,9 +8,8 @@ David Mah
 This program was created as a homework solution to simulate an airline checkin system. This program utilizes mutexes, conditional variables, and semaphores.
 
 ## Instructions
-1. Unzip p2.tar.gz
-2. Run "make"
-3. To run ACS, you MUST specify a customer test file. `./ACS <customer_file>`
+1. Run "make"
+2. To run ACS, you MUST specify a customer test file. `./ACS <customer_file>`
     Ex. `./ACS customers.txt`
 
 ## Included test files
